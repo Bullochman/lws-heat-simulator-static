@@ -66,6 +66,11 @@
       kbGapBadge: 'KB gap',
       furnaceRadiusWarn: 'Alliance Furnace tile radius per level is a KB gap — the drawn ring is a placeholder (see docs/kb-refs.md).',
 
+      // ---- season-agnostic fallback
+      noHeatTitle: "Heat mechanics don't apply this season",
+      noHeatBody: 'This tool visualises Season 2 (Polar Storm) thermal bands. The current warzone/season has no temperature system — switch warzone or override the season via the selector above to plan for a frozen season.',
+      noHeatFreezeList: 'Freeze-risk list is Season-2-only. No thermal drop on this season.',
+
       // ---- footer
       footerCred: 'Data source: LWS Knowledge Base · Season 2 (Polar Storm)',
       footerHome: 'r5tools.io',
@@ -128,6 +133,11 @@
       // ---- KB-gap warning
       kbGapBadge: 'KB 누락',
       furnaceRadiusWarn: '연맹 화로 레벨별 타일 반경은 KB에 없는 값입니다 — 표시된 원은 임시 값입니다 (docs/kb-refs.md 참조).',
+
+      // ---- season-agnostic fallback
+      noHeatTitle: '이번 시즌에는 온도 시스템이 적용되지 않습니다',
+      noHeatBody: '이 도구는 시즌 2(폴라 스톰)의 온도대를 시각화합니다. 현재 전쟁구역/시즌에는 온도 시스템이 없습니다 — 위 선택기에서 전쟁구역을 바꾸거나 시즌을 재정의해 냉동 시즌을 계획해 보세요.',
+      noHeatFreezeList: '냉동 위험 명단은 시즌 2 전용입니다. 이번 시즌은 온도 하락이 없습니다.',
 
       // ---- footer
       footerCred: '데이터 출처: LWS 지식 베이스 · 시즌 2 (폴라 스톰)',

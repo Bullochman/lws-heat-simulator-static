@@ -49,9 +49,13 @@
           <div>
             <div class="map-wrap">
               <h2 data-i18n="mapPanelTitle">Warzone Heat Map</h2>
+              <div id="noHeatBanner" style="display:none;padding:24px;margin-bottom:12px;background:rgba(201,169,97,0.08);border:1px solid rgba(201,169,97,0.3);border-radius:8px;color:#c9a961;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5">
+                <div style="font-weight:600;margin-bottom:6px" data-i18n="noHeatTitle">Heat mechanics don't apply this season</div>
+                <div style="color:#a8b0c0;font-size:13px" data-i18n="noHeatBody">This tool visualises Season 2 (Polar Storm) thermal bands. The current warzone/season has no temperature system — switch warzone or override the season via the selector above to plan for a frozen season.</div>
+              </div>
               <canvas id="heatCanvas" width="1200" height="1200" aria-label="Warzone heat map"></canvas>
               <div class="map-legend" id="mapLegend">
-                <!-- populated by app.js from KB ambient bands -->
+                <!-- populated by app.js from LWSSeasons.mechanics_config.ambient_bands_c -->
               </div>
               <div style="margin-top: 12px;">
                 <span class="badge kb-gap" data-i18n="kbGapBadge">KB gap</span>
@@ -119,7 +123,7 @@
                 <div class="row"><span class="k" data-i18n="blizzardDrop">Blizzard drop</span> <span class="v" id="rBlizzard">—</span></div>
                 <div class="row"><span class="k" data-i18n="bonusTotal">Bonus stack</span> <span class="v" id="rBonus">—</span></div>
                 <div class="row"><span class="k" data-i18n="current">Current temp</span> <span class="v" id="rCurrent">—</span></div>
-                <div class="row"><span class="k" data-i18n="freezeThreshold">Freeze threshold</span> <span class="v" id="rThreshold">-20 °C</span></div>
+                <div class="row"><span class="k" data-i18n="freezeThreshold">Freeze threshold</span> <span class="v" id="rThreshold">—</span></div>
                 <div class="row"><span class="k" data-i18n="status">Status</span> <span class="v" id="rStatus">—</span></div>
               </div>
             </div>
@@ -164,37 +168,84 @@
 
   <script src="static/fake-server.js"></script>
     <script src="static/i18n.js"></script>
+    <script src="static/seasons-lib.js"></script>
 
   <script>
   // =====================================================================
-  // Heat Simulator — v0.1 scaffold
+  // Heat Simulator — v0.2 (season-agnostic)
   //
-  // Renders the seven concentric ambient bands per KB [[06-season-2-frozen]]
-  // onto the canvas, overlays a placeholder Alliance Furnace ring, and
-  // wires the lookup/compute/upload buttons to /api endpoints.
+  // Renders concentric ambient temperature bands sourced from
+  // window.LWSSeasons.getMechanicsConfig(currentSeason).ambient_bands_c.
+  // Falls back to server-served /api/snapshot _constants if LWSSeasons is
+  // unreachable. Skips render entirely for seasons with no heat mechanics
+  // (e.g. S1, S3, S5) and shows a friendly banner instead.
   //
-  // NOT feature-complete — real furnace radius, city overlays, roster
-  // plotting, and PNG export polish land in a follow-up session.
+  // Listens for lws:season-changed / lws:warzone-changed and re-renders.
   // =====================================================================
 
   const CANVAS = document.getElementById('heatCanvas');
   const CTX = CANVAS.getContext('2d');
   const W = CANVAS.width, H = CANVAS.height;
+  const NO_HEAT_BANNER = document.getElementById('noHeatBanner');
 
-  // Populated from /api/snapshot _constants
-  let CONSTANTS = null;
+  // Populated from LWSSeasons.getMechanicsConfig() (preferred) or
+  // /api/snapshot _constants (fallback for the compute API).
+  let SEASON_CFG = null;   // mechanics_config for the resolved season
+  let SEASON_META = null;  // { id, name, ... } — used for footer credits
+  let CONSTANTS = null;    // legacy: server-side _constants payload
   let STATE = null;
 
-  // Map ambient band °C → CSS var color
+  // Fallback S2 bands used ONLY if BOTH LWSSeasons and CONSTANTS are unreachable.
+  const FALLBACK_BANDS_C = [-15, -30, -40, -50, -60, -70, -80];
+  const FALLBACK_FREEZE_C = -20;
+
+  function currentBands() {
+    if (SEASON_CFG && Array.isArray(SEASON_CFG.ambient_bands_c)) return SEASON_CFG.ambient_bands_c;
+    if (CONSTANTS && Array.isArray(CONSTANTS.ambient_bands_c)) return CONSTANTS.ambient_bands_c;
+    return FALLBACK_BANDS_C;
+  }
+  function currentFreezeThreshold() {
+    if (SEASON_CFG && typeof SEASON_CFG.freeze_threshold_c === 'number') return SEASON_CFG.freeze_threshold_c;
+    if (CONSTANTS && typeof CONSTANTS.freeze_threshold_c === 'number') return CONSTANTS.freeze_threshold_c;
+    return FALLBACK_FREEZE_C;
+  }
+  function currentBlizzardDrop(key) {
+    // Prefer LWSSeasons config; blizzard_drop_c is a { none, w1_2, w3, w4|w4_plus } dict.
+    var src = (SEASON_CFG && SEASON_CFG.blizzard_drop_c) || (CONSTANTS && CONSTANTS.blizzard_drop_c) || {};
+    if (src[key] != null) return src[key];
+    // Handle 'w4' vs 'w4_plus' schema drift between server payload + seasons.json
+    if (key === 'w4' && src.w4_plus != null) return src.w4_plus;
+    if (key === 'w4_plus' && src.w4 != null) return src.w4;
+    return 0;
+  }
+  function currentFurnaceRadii() {
+    var r1 = (SEASON_CFG && SEASON_CFG.furnace_radius_l1_tiles)
+          || (CONSTANTS && CONSTANTS.furnace_radius_l1_tiles) || 4;
+    var r20 = (SEASON_CFG && SEASON_CFG.furnace_radius_l20_tiles)
+          || (CONSTANTS && CONSTANTS.furnace_radius_l20_tiles) || 12;
+    return { r1: r1, r20: r20 };
+  }
+  function seasonHasHeat() {
+    // A season "has heat" if its mechanics_config exposes an ambient_bands_c array.
+    // Seasons without it (S1 virus, S3 desert, S5 wild west, S6 rainforest, etc.)
+    // fall back to the "no heat mechanics" banner.
+    return !!(SEASON_CFG && Array.isArray(SEASON_CFG.ambient_bands_c) && SEASON_CFG.ambient_bands_c.length > 0);
+  }
+
+  // Map ambient band °C → CSS var color. Dynamically picks the right swatch
+  // based on the band's index into the current bands array (so a season with
+  // fewer/more bands still colors uniformly).
   function bandColor(temp) {
-    // KB: [[06-season-2-frozen]] bands -15, -30, -40, -50, -60, -70, -80
-    if (temp >= -15) return getVar('--heat-band-1');
-    if (temp >= -30) return getVar('--heat-band-2');
-    if (temp >= -40) return getVar('--heat-band-3');
-    if (temp >= -50) return getVar('--heat-band-4');
-    if (temp >= -60) return getVar('--heat-band-5');
-    if (temp >= -70) return getVar('--heat-band-6');
-    return getVar('--heat-band-7');
+    var bands = currentBands();
+    // Find first band whose ceiling this temp falls under. Bands are
+    // descending: [-15, -30, -40, -50, -60, -70, -80].
+    var idx = bands.length - 1;
+    for (var i = 0; i < bands.length; i++) {
+      if (temp >= bands[i]) { idx = i; break; }
+    }
+    // Clamp to available CSS vars --heat-band-1 through --heat-band-7.
+    var cssIdx = Math.min(7, idx + 1);
+    return getVar('--heat-band-' + cssIdx);
   }
   function getVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -210,7 +261,7 @@
 
   function ambientAt(x, y, capitol) {
     // Mirror server-side logic exactly (see server.py ambient_at)
-    const bands = CONSTANTS ? CONSTANTS.ambient_bands_c : [-15, -30, -40, -50, -60, -70, -80];
+    const bands = currentBands();
     const dx = x - capitol.x, dy = y - capitol.y;
     const dist = Math.sqrt(dx*dx + dy*dy);
     const maxDist = Math.sqrt(capitol.x*capitol.x + capitol.y*capitol.y) || 1;
@@ -220,6 +271,18 @@
   }
 
   function renderMap() {
+    // Season without heat mechanics → hide canvas, show banner.
+    if (!seasonHasHeat()) {
+      CANVAS.style.display = 'none';
+      NO_HEAT_BANNER.style.display = 'block';
+      // Blank the legend + freeze list to avoid stale S2 content.
+      var legend = document.getElementById('mapLegend');
+      if (legend) legend.innerHTML = '';
+      return;
+    }
+    CANVAS.style.display = '';
+    NO_HEAT_BANNER.style.display = 'none';
+
     const cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
 
     // Draw ambient bands using rings (coarse but fast)
@@ -248,10 +311,9 @@
     const furnace = parseCoord(document.getElementById('furnaceCoord').value);
     if (furnace) {
       const level = furnace.level || 1;
-      // Linear interp between KB-gap placeholder endpoints
-      const r1 = (CONSTANTS && CONSTANTS.furnace_radius_l1_tiles) || 4;
-      const r20 = (CONSTANTS && CONSTANTS.furnace_radius_l20_tiles) || 12;
-      const tiles = r1 + (r20 - r1) * ((Math.max(1, Math.min(20, level)) - 1) / 19);
+      // Linear interp between endpoints from LWSSeasons mechanics_config.
+      const radii = currentFurnaceRadii();
+      const tiles = radii.r1 + (radii.r20 - radii.r1) * ((Math.max(1, Math.min(20, level)) - 1) / 19);
       // 1 tile ≈ 20px on the current canvas (arbitrary — v2 wires this to real tile scale)
       const radiusPx = tiles * 20;
       CTX.strokeStyle = getVar('--accent-hover');
@@ -297,8 +359,8 @@
     CTX.strokeStyle = 'rgba(255,255,255,0.10)';
     CTX.beginPath(); CTX.moveTo(0, H - footerH); CTX.lineTo(W, H - footerH); CTX.stroke();
 
-    // On-canvas legend (7 bands)
-    const bands = (CONSTANTS && CONSTANTS.ambient_bands_c) || [-15, -30, -40, -50, -60, -70, -80];
+    // On-canvas legend — driven by LWSSeasons.mechanics_config.ambient_bands_c
+    const bands = currentBands();
     CTX.fillStyle = '#a8b0c0';
     CTX.font = '500 11px system-ui, sans-serif';
     CTX.textAlign = 'left';
@@ -330,8 +392,10 @@
 
   function populateLegend() {
     const legend = document.getElementById('mapLegend');
+    if (!legend) return;
     legend.innerHTML = '';
-    const bands = CONSTANTS ? CONSTANTS.ambient_bands_c : [-15, -30, -40, -50, -60, -70, -80];
+    if (!seasonHasHeat()) return;
+    const bands = currentBands();
     bands.forEach(function (temp) {
       const wrap = document.createElement('span');
       wrap.innerHTML =
@@ -339,10 +403,14 @@
         temp + ' °C';
       legend.appendChild(wrap);
     });
-    // Freeze threshold marker
+    // Freeze threshold marker — pulled from LWSSeasons config
+    const threshold = currentFreezeThreshold();
     const th = document.createElement('span');
-    th.innerHTML = '<span class="swatch" style="background:' + getVar('--heat-freeze') + '"></span>< -20 °C = freeze';
+    th.innerHTML = '<span class="swatch" style="background:' + getVar('--heat-freeze') + '"></span>< ' + threshold + ' °C = freeze';
     legend.appendChild(th);
+    // Update the sidebar readout row too, so users see the season's actual threshold.
+    const rThreshold = document.getElementById('rThreshold');
+    if (rThreshold) rThreshold.textContent = threshold + ' °C';
   }
 
   async function fetchSnapshot() {
@@ -358,6 +426,34 @@
       console.error('[Heat Simulator] snapshot failed', e);
     }
   }
+
+  // ---- LWSSeasons wire-up ------------------------------------------------
+  async function loadSeasonConfig() {
+    if (!window.LWSSeasons || typeof window.LWSSeasons.resolve !== 'function') {
+      console.warn('[Heat Simulator] LWSSeasons not available — using server _constants fallback');
+      return;
+    }
+    try {
+      const ctx = await window.LWSSeasons.resolve();
+      SEASON_META = ctx.season || null;
+      SEASON_CFG = (ctx.season && ctx.season.mechanics_config) || {};
+      console.log('[Heat Simulator] loaded season', ctx.season_id, 'wk', ctx.week,
+                  '(has_heat=' + seasonHasHeat() + ')');
+    } catch (e) {
+      console.error('[Heat Simulator] LWSSeasons.resolve failed', e);
+    }
+  }
+
+  async function refreshFromSeason() {
+    await loadSeasonConfig();
+    populateLegend();
+    renderMap();
+    renderFreezeList();
+  }
+
+  // React to warzone / season override changes from the shared selector.
+  window.addEventListener('lws:season-changed', refreshFromSeason);
+  window.addEventListener('lws:warzone-changed', refreshFromSeason);
 
   async function computeAt(x, y) {
     const blizzard = document.getElementById('blizzardSelect').value;
@@ -385,6 +481,12 @@
 
   function renderFreezeList() {
     const list = document.getElementById('freezeList');
+    // Season doesn't have thermal freeze → tell users the list is N/A.
+    if (!seasonHasHeat()) {
+      list.innerHTML = '<li style="color: var(--text-mute); font-family: var(--sans); font-size: 12px;">' +
+        I18N.t('noHeatFreezeList') + '</li>';
+      return;
+    }
     if (!STATE || !STATE.roster || STATE.roster.length === 0) {
       list.innerHTML = '<li style="color: var(--text-mute); font-family: var(--sans); font-size: 12px;">' +
         I18N.t('msgNoRoster') + '</li>';
@@ -392,6 +494,7 @@
     }
     // Compute freeze risk for each member with coords
     const blizzard = document.getElementById('blizzardSelect').value;
+    const threshold = currentFreezeThreshold();
     list.innerHTML = '';
     STATE.roster.forEach(function (m) {
       if (m.x == null || m.y == null || m.x === '' || m.y === '') return;
@@ -399,9 +502,9 @@
       // Client-side mirror of server compute so we don't roundtrip per row
       const cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
       const amb = ambientAt(m.x, m.y, cap);
-      const drop = CONSTANTS ? CONSTANTS.blizzard_drop_c[blizzard] : 0;
+      const drop = currentBlizzardDrop(blizzard);
       const cur = amb + drop;
-      const frozen = cur < (CONSTANTS ? CONSTANTS.freeze_threshold_c : -20);
+      const frozen = cur < threshold;
       const li = document.createElement('li');
       li.innerHTML =
         '<span class="name">' + (m.name || '?') + ' <span style="color:var(--text-mute)">[' + (m.rank || '') + ']</span></span>' +
@@ -479,17 +582,22 @@
 
   document.getElementById('exportCsvBtn').addEventListener('click', function () {
     if (!STATE || !STATE.roster) return;
+    if (!seasonHasHeat()) {
+      alert(I18N.t('noHeatFreezeList'));
+      return;
+    }
     // Emit the same schema as Hive Grid Manager plus computed temp
     const cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
     const blizzard = document.getElementById('blizzardSelect').value;
-    const drop = CONSTANTS ? CONSTANTS.blizzard_drop_c[blizzard] : 0;
+    const drop = currentBlizzardDrop(blizzard);
+    const threshold = currentFreezeThreshold();
     const headers = ['name','rank','hq_level','total_power','notes','x','y','ambient_c','bonus_c','current_c','frozen','blizzard'];
     const rows = [headers.join(',')];
     STATE.roster.forEach(function (m) {
       if (m.x == null || m.y == null) return;
       const amb = ambientAt(m.x, m.y, cap);
       const cur = amb + drop;
-      const frozen = cur < (CONSTANTS ? CONSTANTS.freeze_threshold_c : -20);
+      const frozen = cur < threshold;
       rows.push([
         JSON.stringify(m.name || ''), m.rank || '', m.hq_level || '',
         m.total_power || '', JSON.stringify(m.notes || ''),
@@ -509,8 +617,16 @@
     renderFreezeList();
   });
 
-  // Kickoff
-  fetchSnapshot();
+  // Kickoff: load LWSSeasons mechanics_config first, then the server snapshot.
+  // If LWSSeasons is unreachable, fetchSnapshot() still fills CONSTANTS as a
+  // fallback so the S2 render works even offline.
+  (async function boot() {
+    await loadSeasonConfig();
+    await fetchSnapshot();
+    // fetchSnapshot renders; but if the season has no heat we want to make
+    // sure the banner is visible even without the server payload.
+    if (!seasonHasHeat()) renderMap();
+  })();
 
   </script>
 
@@ -533,6 +649,5 @@
     });
   </script>
 
-  <script src="static/seasons-lib.js" defer></script>
 </body>
 </html>
