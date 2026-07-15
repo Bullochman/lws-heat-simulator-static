@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LWS Heat Simulator — Season 2 temperature planner</title>
+  <meta name="description" content="Season 2 (Polar Storm) temperature overlay + freeze-risk planner for Last War: Survival alliances. Paints the map, overlays furnaces + cities, flags freeze-risk bases." />
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="top">
+      <div class="brand">
+        R5TOOLS.IO
+        <span class="brand-sub" data-i18n="brandSub">LWS Suite · Heat Simulator</span>
+      </div>
+      <button class="lang-toggle" id="langToggle" data-i18n="langToggle">한국어</button>
+    </header>
+
+    <!-- Everything gated by LWS_Access_Codes lives inside #main-app.
+         If the user isn't unlocked, LWSAccessCodes.gate() overlays this div. -->
+    <div id="main-app">
+
+      <div class="card">
+        <h1 data-i18n="appTitle">Heat Simulator</h1>
+        <p class="lede" data-i18n="appTagline">Season 2 (Polar Storm) temperature overlay + freeze-risk planner. Paints the map with the seven ambient bands (-15 °C to -80 °C), overlays furnaces + cities, flags freeze-risk bases.</p>
+
+        <div class="app-grid">
+
+          <!-- LEFT: map -->
+          <div>
+            <div class="map-wrap">
+              <h2 data-i18n="mapPanelTitle">Warzone Heat Map</h2>
+              <canvas id="heatCanvas" width="1200" height="1200" aria-label="Warzone heat map"></canvas>
+              <div class="map-legend" id="mapLegend">
+                <!-- populated by app.js from KB ambient bands -->
+              </div>
+              <div style="margin-top: 12px;">
+                <span class="badge kb-gap" data-i18n="kbGapBadge">KB gap</span>
+                <span style="font-size: 12px; color: var(--text-mute); margin-left: 8px;" data-i18n="furnaceRadiusWarn">
+                  Alliance Furnace tile radius per level is a KB gap — the drawn ring is a placeholder.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: controls + readout -->
+          <div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h2 data-i18n="controlsPanelTitle">Controls</h2>
+              <div class="controls">
+
+                <div class="row">
+                  <label data-i18n="capitolLabel">Capitol (x, y)</label>
+                  <input type="text" id="capitolCoord" value="600, 600" />
+                </div>
+
+                <div class="row">
+                  <label data-i18n="furnaceLabel">Alliance Furnace</label>
+                  <input type="text" id="furnaceCoord" data-i18n-placeholder="furnacePlaceholder" placeholder="x, y, level" />
+                </div>
+                <p style="font-size: 11px; color: var(--text-mute); margin: -4px 0 12px 96px;" data-i18n="furnaceHint">R4/R5 deploys on L1 territory Day 1 (KB [[06-season-2-frozen]])</p>
+
+                <div class="row">
+                  <label data-i18n="blizzardLabel">Blizzard</label>
+                  <select id="blizzardSelect">
+                    <option value="none" data-i18n="blizzardNone">None</option>
+                    <option value="w1_2" data-i18n="blizzardW12">Week 1-2 (-30 °C)</option>
+                    <option value="w3"   data-i18n="blizzardW3">Week 3 (-50 °C)</option>
+                    <option value="w4"   data-i18n="blizzardW4">Week 4+ (-70 °C, Rare Soil War)</option>
+                  </select>
+                </div>
+
+                <div class="row">
+                  <label data-i18n="lookupLabel">Lookup coord</label>
+                  <input type="text" id="lookupCoord" data-i18n-placeholder="lookupPlaceholder" placeholder="e.g. 342, 118" />
+                  <button class="btn btn-primary" id="lookupBtn" data-i18n="lookupBtn">Compute</button>
+                </div>
+
+                <div class="row" style="margin-top: 16px;">
+                  <input type="file" id="rosterFile" accept=".csv" style="display: none;" />
+                  <button class="btn btn-secondary" id="rosterUploadBtn" data-i18n="rosterUploadBtn" style="width: 100%;">Upload roster CSV</button>
+                </div>
+                <p style="font-size: 11px; color: var(--text-mute); margin: -4px 0 12px 0;" data-i18n="rosterFormatHint">Columns: name, rank, hq_level, total_power, notes, x, y — matches Hive Grid Manager</p>
+
+                <div class="row">
+                  <button class="btn btn-primary" id="exportPngBtn" data-i18n="exportPngBtn" style="flex: 1;">Export PNG</button>
+                  <button class="btn btn-secondary" id="exportCsvBtn" data-i18n="exportCsvBtn" style="flex: 1;">Export CSV</button>
+                </div>
+
+                <div id="uploadMsg" style="font-size: 12px; color: var(--text-mute); margin-top: 8px;"></div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h2 data-i18n="readoutPanelTitle">Readout</h2>
+              <div class="readout" id="readout">
+                <div class="row"><span class="k" data-i18n="ambient">Ambient</span> <span class="v" id="rAmbient">—</span></div>
+                <div class="row"><span class="k" data-i18n="blizzardDrop">Blizzard drop</span> <span class="v" id="rBlizzard">—</span></div>
+                <div class="row"><span class="k" data-i18n="bonusTotal">Bonus stack</span> <span class="v" id="rBonus">—</span></div>
+                <div class="row"><span class="k" data-i18n="current">Current temp</span> <span class="v" id="rCurrent">—</span></div>
+                <div class="row"><span class="k" data-i18n="freezeThreshold">Freeze threshold</span> <span class="v" id="rThreshold">-20 °C</span></div>
+                <div class="row"><span class="k" data-i18n="status">Status</span> <span class="v" id="rStatus">—</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 data-i18n="freezeListTitle">Freeze-Risk Roster</h2>
+              <ul class="freeze-list" id="freezeList">
+                <li style="color: var(--text-mute); font-family: var(--sans); font-size: 12px;" data-i18n="msgNoRoster">
+                  No roster loaded. Upload a CSV or paste a coord.
+                </li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div><!-- /#main-app -->
+
+    <footer class="bottom">
+      <a href="https://r5tools.io" target="_blank" data-i18n="footerHome">r5tools.io</a>
+      · <span data-i18n="footerCred">Data source: LWS Knowledge Base · Season 2 (Polar Storm)</span>
+    </footer>
+
+  </div>
+
+  <!-- ============================================================
+       LWS_Access_Codes shared gate — see /Users/evanjones/claudecode/LWS_Access_Codes/docs/integration.md
+       In prod, `access-codes.r5tools.io` serves the library.
+       In local dev, either run access-codes on :8081 and change this src,
+       or set ?force-unlock=DEV in the URL to bypass (dev-only cookie).
+       ============================================================ -->
+  <script src="https://access-codes.r5tools.io/lib.js"></script>
+  <script>
+    // Wrap #main-app in an unlock overlay if the visitor has no valid cookie.
+    // The library redirects to the unlock page and returns them here on success.
+    if (window.LWSAccessCodes && typeof window.LWSAccessCodes.gate === 'function') {
+      window.LWSAccessCodes.gate('main-app');
+    } else {
+      console.warn('[Heat Simulator] LWSAccessCodes gate not loaded — access-codes.r5tools.io/lib.js may be unreachable. Tool is open in this session.');
+    }
+  </script>
+
+  <script src="static/fake-server.js"></script>
+    <script src="static/i18n.js"></script>
+
+  <script>
+  // =====================================================================
+  // Heat Simulator — v0.1 scaffold
+  //
+  // Renders the seven concentric ambient bands per KB [[06-season-2-frozen]]
+  // onto the canvas, overlays a placeholder Alliance Furnace ring, and
+  // wires the lookup/compute/upload buttons to /api endpoints.
+  //
+  // NOT feature-complete — real furnace radius, city overlays, roster
+  // plotting, and PNG export polish land in a follow-up session.
+  // =====================================================================
+
+  const CANVAS = document.getElementById('heatCanvas');
+  const CTX = CANVAS.getContext('2d');
+  const W = CANVAS.width, H = CANVAS.height;
+
+  // Populated from /api/snapshot _constants
+  let CONSTANTS = null;
+  let STATE = null;
+
+  // Map ambient band °C → CSS var color
+  function bandColor(temp) {
+    // KB: [[06-season-2-frozen]] bands -15, -30, -40, -50, -60, -70, -80
+    if (temp >= -15) return getVar('--heat-band-1');
+    if (temp >= -30) return getVar('--heat-band-2');
+    if (temp >= -40) return getVar('--heat-band-3');
+    if (temp >= -50) return getVar('--heat-band-4');
+    if (temp >= -60) return getVar('--heat-band-5');
+    if (temp >= -70) return getVar('--heat-band-6');
+    return getVar('--heat-band-7');
+  }
+  function getVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function parseCoord(str) {
+    const parts = String(str || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length < 2) return null;
+    const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
+    if (isNaN(x) || isNaN(y)) return null;
+    return { x, y, level: parts[2] ? parseInt(parts[2], 10) : undefined };
+  }
+
+  function ambientAt(x, y, capitol) {
+    // Mirror server-side logic exactly (see server.py ambient_at)
+    const bands = CONSTANTS ? CONSTANTS.ambient_bands_c : [-15, -30, -40, -50, -60, -70, -80];
+    const dx = x - capitol.x, dy = y - capitol.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const maxDist = Math.sqrt(capitol.x*capitol.x + capitol.y*capitol.y) || 1;
+    const ratio = Math.max(0, Math.min(1, 1 - (dist / maxDist)));
+    const idx = Math.min(bands.length - 1, Math.floor(ratio * bands.length));
+    return bands[idx];
+  }
+
+  function renderMap() {
+    const cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
+
+    // Draw ambient bands using rings (coarse but fast)
+    // Loop the whole canvas at 20px steps and fill a rectangle per cell.
+    const step = 20;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const t = ambientAt(x + step/2, y + step/2, cap);
+        CTX.fillStyle = bandColor(t);
+        CTX.fillRect(x, y, step, step);
+      }
+    }
+
+    // Capitol marker
+    CTX.strokeStyle = getVar('--accent');
+    CTX.lineWidth = 3;
+    CTX.beginPath();
+    CTX.arc(cap.x, cap.y, 12, 0, Math.PI * 2);
+    CTX.stroke();
+    CTX.fillStyle = getVar('--accent');
+    CTX.font = 'bold 18px ui-monospace, Menlo, Consolas, monospace';
+    CTX.textAlign = 'center';
+    CTX.fillText('◈', cap.x, cap.y + 6);
+
+    // Alliance Furnace overlay (placeholder radius — KB gap flagged)
+    const furnace = parseCoord(document.getElementById('furnaceCoord').value);
+    if (furnace) {
+      const level = furnace.level || 1;
+      // Linear interp between KB-gap placeholder endpoints
+      const r1 = (CONSTANTS && CONSTANTS.furnace_radius_l1_tiles) || 4;
+      const r20 = (CONSTANTS && CONSTANTS.furnace_radius_l20_tiles) || 12;
+      const tiles = r1 + (r20 - r1) * ((Math.max(1, Math.min(20, level)) - 1) / 19);
+      // 1 tile ≈ 20px on the current canvas (arbitrary — v2 wires this to real tile scale)
+      const radiusPx = tiles * 20;
+      CTX.strokeStyle = getVar('--accent-hover');
+      CTX.setLineDash([6, 6]);
+      CTX.lineWidth = 2;
+      CTX.beginPath();
+      CTX.arc(furnace.x, furnace.y, radiusPx, 0, Math.PI * 2);
+      CTX.stroke();
+      CTX.setLineDash([]);
+      CTX.fillStyle = getVar('--accent');
+      CTX.fillText('▲', furnace.x, furnace.y + 6);
+    }
+
+    // ---- Branded overlay (header + legend + footer) — so the exported PNG is Discord-ready ----
+    drawBrandOverlay(cap, furnace);
+  }
+
+  // Draws a semi-transparent header + on-canvas legend + footer on top of the heatmap.
+  // Uses the shared LWS palette (matches unlock.html / other tools).
+  function drawBrandOverlay(capitol, furnace) {
+    const headerH = 44, footerH = 60;
+    // Header bar
+    CTX.fillStyle = 'rgba(13, 20, 36, 0.92)';
+    CTX.fillRect(0, 0, W, headerH);
+    CTX.strokeStyle = 'rgba(255,255,255,0.10)';
+    CTX.lineWidth = 1;
+    CTX.beginPath(); CTX.moveTo(0, headerH); CTX.lineTo(W, headerH); CTX.stroke();
+    CTX.fillStyle = '#c9a961';
+    CTX.font = '600 13px system-ui, -apple-system, sans-serif';
+    CTX.textBaseline = 'middle';
+    CTX.textAlign = 'left';
+    CTX.fillText('R5TOOLS.IO · HEAT SIMULATOR', 12, headerH / 2);
+    CTX.fillStyle = '#a8b0c0';
+    CTX.font = '400 11px system-ui, sans-serif';
+    CTX.textAlign = 'right';
+    let headerRight = 'Capitol (' + capitol.x + ', ' + capitol.y + ')';
+    if (furnace) headerRight += '  ·  Alliance Furnace L' + (furnace.level || 1);
+    CTX.fillText(headerRight, W - 12, headerH / 2);
+
+    // Footer bar with legend + branding
+    CTX.fillStyle = 'rgba(13, 20, 36, 0.92)';
+    CTX.fillRect(0, H - footerH, W, footerH);
+    CTX.strokeStyle = 'rgba(255,255,255,0.10)';
+    CTX.beginPath(); CTX.moveTo(0, H - footerH); CTX.lineTo(W, H - footerH); CTX.stroke();
+
+    // On-canvas legend (7 bands)
+    const bands = (CONSTANTS && CONSTANTS.ambient_bands_c) || [-15, -30, -40, -50, -60, -70, -80];
+    CTX.fillStyle = '#a8b0c0';
+    CTX.font = '500 11px system-ui, sans-serif';
+    CTX.textAlign = 'left';
+    let legX = 12, legY = H - footerH + 22;
+    CTX.fillText('Ambient bands:', legX, legY);
+    legX += 100;
+    bands.forEach(function (temp) {
+      CTX.fillStyle = bandColor(temp);
+      CTX.fillRect(legX, legY - 7, 16, 14);
+      CTX.strokeStyle = 'rgba(255,255,255,0.15)';
+      CTX.strokeRect(legX, legY - 7, 16, 14);
+      CTX.fillStyle = '#a8b0c0';
+      CTX.font = '500 11px ui-monospace, monospace';
+      CTX.fillText(temp + '°C', legX + 20, legY);
+      legX += 20 + CTX.measureText(temp + '°C').width + 10;
+    });
+
+    // Footer credits
+    CTX.fillStyle = '#7a8290';
+    CTX.font = '400 10px system-ui, sans-serif';
+    CTX.textAlign = 'left';
+    CTX.fillText('KB: [[06-season-2-frozen]] · freeze threshold -20°C for 5 continuous min. Furnace radius per level is a KB open question — placeholder.',
+                 12, H - 18);
+    CTX.textAlign = 'right';
+    CTX.fillText('r5tools.io · ' + new Date().toISOString().slice(0, 10), W - 12, H - 18);
+    CTX.textBaseline = 'alphabetic';
+    CTX.textAlign = 'left';
+  }
+
+  function populateLegend() {
+    const legend = document.getElementById('mapLegend');
+    legend.innerHTML = '';
+    const bands = CONSTANTS ? CONSTANTS.ambient_bands_c : [-15, -30, -40, -50, -60, -70, -80];
+    bands.forEach(function (temp) {
+      const wrap = document.createElement('span');
+      wrap.innerHTML =
+        '<span class="swatch" style="background:' + bandColor(temp) + '"></span>' +
+        temp + ' °C';
+      legend.appendChild(wrap);
+    });
+    // Freeze threshold marker
+    const th = document.createElement('span');
+    th.innerHTML = '<span class="swatch" style="background:' + getVar('--heat-freeze') + '"></span>< -20 °C = freeze';
+    legend.appendChild(th);
+  }
+
+  async function fetchSnapshot() {
+    try {
+      const r = await fetch('/api/snapshot');
+      const data = await r.json();
+      STATE = data;
+      CONSTANTS = data._constants || null;
+      populateLegend();
+      renderMap();
+      renderFreezeList();
+    } catch (e) {
+      console.error('[Heat Simulator] snapshot failed', e);
+    }
+  }
+
+  async function computeAt(x, y) {
+    const blizzard = document.getElementById('blizzardSelect').value;
+    // v1 scaffold: no per-base bonuses UI yet — pass empty bonuses.
+    const body = { x, y, bonuses: {}, blizzard };
+    const r = await fetch('/api/compute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return await r.json();
+  }
+
+  function paintReadout(res) {
+    document.getElementById('rAmbient').textContent = res.ambient + ' °C';
+    document.getElementById('rBlizzard').textContent = res.blizzard_drop + ' °C';
+    document.getElementById('rBonus').textContent = '+' + res.bonus_total + ' °C';
+    const cur = document.getElementById('rCurrent');
+    cur.textContent = res.current + ' °C';
+    cur.className = 'v ' + (res.frozen ? 'danger' : 'ok');
+    const st = document.getElementById('rStatus');
+    st.textContent = res.frozen ? I18N.t('statusFrozen') : I18N.t('statusSafe');
+    st.className = 'v ' + (res.frozen ? 'danger' : 'ok');
+  }
+
+  function renderFreezeList() {
+    const list = document.getElementById('freezeList');
+    if (!STATE || !STATE.roster || STATE.roster.length === 0) {
+      list.innerHTML = '<li style="color: var(--text-mute); font-family: var(--sans); font-size: 12px;">' +
+        I18N.t('msgNoRoster') + '</li>';
+      return;
+    }
+    // Compute freeze risk for each member with coords
+    const blizzard = document.getElementById('blizzardSelect').value;
+    list.innerHTML = '';
+    STATE.roster.forEach(function (m) {
+      if (m.x == null || m.y == null || m.x === '' || m.y === '') return;
+      // v1: use empty bonuses; v2 will pull per-member bonus toggles
+      // Client-side mirror of server compute so we don't roundtrip per row
+      const cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
+      const amb = ambientAt(m.x, m.y, cap);
+      const drop = CONSTANTS ? CONSTANTS.blizzard_drop_c[blizzard] : 0;
+      const cur = amb + drop;
+      const frozen = cur < (CONSTANTS ? CONSTANTS.freeze_threshold_c : -20);
+      const li = document.createElement('li');
+      li.innerHTML =
+        '<span class="name">' + (m.name || '?') + ' <span style="color:var(--text-mute)">[' + (m.rank || '') + ']</span></span>' +
+        '<span class="coord">' + m.x + ', ' + m.y + ' · ' + cur + ' °C ' +
+        '<span class="badge ' + (frozen ? 'freeze' : 'safe') + '">' +
+        (frozen ? I18N.t('statusFrozen') : I18N.t('statusSafe')) + '</span></span>';
+      list.appendChild(li);
+    });
+    if (!list.children.length) {
+      list.innerHTML = '<li style="color: var(--text-mute); font-family: var(--sans); font-size: 12px;">' +
+        I18N.t('msgNoRoster') + '</li>';
+    }
+  }
+
+  // ---- wiring ----
+
+  document.getElementById('capitolCoord').addEventListener('change', renderMap);
+  document.getElementById('furnaceCoord').addEventListener('change', renderMap);
+  document.getElementById('blizzardSelect').addEventListener('change', function () {
+    renderFreezeList();
+    // Re-run lookup with new blizzard if lookup coord is set
+    const lc = parseCoord(document.getElementById('lookupCoord').value);
+    if (lc) computeAt(lc.x, lc.y).then(paintReadout);
+  });
+
+  document.getElementById('lookupBtn').addEventListener('click', async function () {
+    const c = parseCoord(document.getElementById('lookupCoord').value);
+    if (!c) return;
+    const res = await computeAt(c.x, c.y);
+    paintReadout(res);
+  });
+
+  document.getElementById('rosterUploadBtn').addEventListener('click', function () {
+    document.getElementById('rosterFile').click();
+  });
+  document.getElementById('rosterFile').addEventListener('change', async function (e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const r = await fetch('/api/roster/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv: text }),
+      });
+      const data = await r.json();
+      const msg = document.getElementById('uploadMsg');
+      if (data.ok) {
+        msg.textContent = I18N.t('msgUploaded', { n: data.rows });
+        msg.style.color = 'var(--success)';
+        await fetchSnapshot();
+      } else {
+        msg.textContent = I18N.t('msgUploadFailed');
+        msg.style.color = 'var(--error)';
+      }
+    } catch (_) {
+      const msg = document.getElementById('uploadMsg');
+      msg.textContent = I18N.t('msgNetworkErr');
+      msg.style.color = 'var(--error)';
+    }
+  });
+
+  document.getElementById('exportPngBtn').addEventListener('click', function () {
+    // Client-side PNG: canvas → blob → download
+    CANVAS.toBlob(function (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      a.href = url;
+      a.download = 'lws-heatmap-' + stamp + '.png';
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  });
+
+  document.getElementById('exportCsvBtn').addEventListener('click', function () {
+    if (!STATE || !STATE.roster) return;
+    // Emit the same schema as Hive Grid Manager plus computed temp
+    const cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
+    const blizzard = document.getElementById('blizzardSelect').value;
+    const drop = CONSTANTS ? CONSTANTS.blizzard_drop_c[blizzard] : 0;
+    const headers = ['name','rank','hq_level','total_power','notes','x','y','ambient_c','bonus_c','current_c','frozen','blizzard'];
+    const rows = [headers.join(',')];
+    STATE.roster.forEach(function (m) {
+      if (m.x == null || m.y == null) return;
+      const amb = ambientAt(m.x, m.y, cap);
+      const cur = amb + drop;
+      const frozen = cur < (CONSTANTS ? CONSTANTS.freeze_threshold_c : -20);
+      rows.push([
+        JSON.stringify(m.name || ''), m.rank || '', m.hq_level || '',
+        m.total_power || '', JSON.stringify(m.notes || ''),
+        m.x, m.y, amb, 0, cur, frozen ? '1' : '0', blizzard,
+      ].join(','));
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'lws-freeze-risk.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.addEventListener('i18n:change', function () {
+    // Re-render dynamic bits when language toggles
+    renderFreezeList();
+  });
+
+  // Kickoff
+  fetchSnapshot();
+
+  </script>
+</body>
+</html>
