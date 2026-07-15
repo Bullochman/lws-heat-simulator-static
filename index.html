@@ -96,6 +96,7 @@
                   <input type="file" id="rosterFile" accept=".csv" style="display: none;" />
                   <button class="btn btn-secondary" id="rosterUploadBtn" data-i18n="rosterUploadBtn" style="width: 100%;">Upload roster CSV</button>
                 </div>
+                <div id="lws-roster-picker" style="margin-top:8px"></div>
                 <p style="font-size: 11px; color: var(--text-mute); margin: -4px 0 12px 0;" data-i18n="rosterFormatHint">Columns: name, rank, hq_level, total_power, notes, x, y — matches Hive Grid Manager</p>
 
                 <div class="row">
@@ -508,5 +509,25 @@
   fetchSnapshot();
 
   </script>
+
+  <script src="static/roster-picker.js" defer></script>
+  <script>
+    window.addEventListener('lws:roster-loaded', function (ev) {
+      var rows = ev.detail.rows;
+      if (!rows || !rows.length) return;
+      var headers = Object.keys(rows[0]);
+      var csv = headers.join(',') + '
+' +
+        rows.map(function (r) { return headers.map(function (h) { return (r[h] || ''); }).join(','); }).join('
+');
+      var input = document.getElementById('rosterFile');
+      if (!input) { console.warn('[LWS] roster input not found'); return; }
+      var dt = new DataTransfer();
+      dt.items.add(new File([csv], ev.detail.name + '.csv', { type: 'text/csv' }));
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  </script>
+
 </body>
 </html>
