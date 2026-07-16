@@ -77,16 +77,25 @@
       appTitle_s4: 'Night Simulator',
       appTagline_s4: 'Season 4 (Evernight Isle) Blood Night planner. Shows the 3 daily Blood Night windows (02:30 / 10:30 / 18:30 server), power drain per window, Lighthouse + Divine Tree VR mitigation, and per-week Blood Night stage.',
 
-      // ---- per-season placeholder copy (S1 / S3 / S5 / S6)
-      noHeatTitle_s1: 'Season 1 has no thermal system',
-      noHeatBody_s1: 'Season 1 (Crimson Plague) uses virus stacks + Doomsday cycles instead of temperature. There is no cold/heat mechanic to visualize. For S1 planning, use the Season Timeline tool for Doomsday cycles + Virus Resistance gates, or override to Season 2 to plan a frozen season.',
-      noHeatTitle_s3: 'Season 3 has no thermal system',
-      noHeatBody_s3: 'Season 3 (Golden Kingdom) uses Curse Resistance + Sandworm Crisis, not temperature. The closest spatial hazard is Sandworm teleport-out for bases outside your Alliance Center 5x5 range — use the City Capture Planner (S3 mode) for that. Override to S2 here to plan a frozen season.',
-      noHeatTitle_s5: 'Season 5 has no thermal system',
-      noHeatBody_s5: 'Season 5 (Wild West) has no thermal or fog hazard. The signature spatial mechanic is Alliance Safe Time (7-15h R5-set immunity that turns off 1 of 3 daily war windows Wed/Sat). For S5 planning use the (upcoming) Bank Ledger tool, or override to S2 here for freeze planning.',
-      noHeatTitle_s6: 'Season 6 fog visibility: KB gap',
-      noHeatBody_s6: 'Season 6 (Shadow Rainforest) has environmental fog that reduces visibility, shared among nearby allies (clustered alliances see farther than spread-out ones). Concrete fog numbers are a KB gap — a Fog Visibility variant is planned once source data lands. For now, plan on the (upcoming) Altar Conquest Planner, or override to S2 here for freeze planning.',
+      // ---- per-season placeholder copy (S1 / S3 / S5 / S6 / S7)
+      noHeatTitle_s1: 'Crimson Plague has no thermal system',
+      noHeatBody_s1: "Season 1's environmental pressure is the virus-stack + Doomsday cycle, not temperature. Stacks accumulate through Corruptor NPC encounters and PvP hits regardless of Virus Resistance (VR) — reaching 100 stacks locks rally/teleport/relocate. VRI (Virus Resistance Institute, L1-L30, max +10,000 VR) is the ONLY meaningful building-source of resistance. No cold/heat bands to render. Use the Season Timeline tool for Doomsday cycles + VR grind sequencing, the Freeze-Risk Dashboard (S1 mode) for per-member virus-stack tracking, or override to S2 above to plan a frozen season. (KB05 §16.3)",
+      noHeatCta_s1: 'For live S1 planning: Season Timeline → Doomsday cycles · Freeze-Risk Dashboard → virus-stack tracker. (KB05 §16.3)',
+      noHeatTitle_s3: 'Golden Kingdom has no thermal grid',
+      noHeatBody_s3: "Season 3's environmental hazard is Sandworm teleport-out: Large Sandworms (14-day Sandworm Crisis event W1-W2) teleport any base outside the Alliance Center 5×5 range to a random map cell. Curse Resistance gates PvE damage (up to 99.9% penalty if under-resisted; capped by Curse Research Lab L30). No temperature bands to render. See the City Capture Planner (S3 mode) for AC-anchored placement, or override to S2 above for freeze planning. (KB07 §34-95, §761-886)",
+      noHeatCta_s3: 'Live S3 tools: City Capture Planner (S3 mode) → AC-anchored placement · Season Timeline → Sandworm Crisis + Spice Wars sequencing. (KB07 §761-886)',
+      noHeatTitle_s5: 'Wild West has no environmental hazard',
+      noHeatBody_s5: "Season 5 replaces thermal and fog hazards with the Alliance Safe Time system: R5 sets a 7-15h immunity window that turns off 1 of 3 daily war slots on Wed + Sat war days. Sunday is a full Truce Day. Bank Strongholds only contest during war windows (2 city captures/war day = max 4/week). L10 Bank Strongholds unlock W4 and require 39,900 Virus Resistance. See the (upcoming) Safe Time Scheduler + Bank Ledger sibling tools, or override to S2 above for freeze planning. (KB07 §241-253)",
+      noHeatCta_s5: 'Live S5 tools: Season Timeline → Bank Strongholds L1-L10 unlock schedule · Coal Burn (S5 variant) → CrystalGold deposit planner. (KB07 §226-273)',
+      noHeatTitle_s6: 'Shadow Rainforest has no thermal grid',
+      noHeatBody_s6: "Season 6's environmental factor is shared fog visibility — clustered same-faction allies see farther than spread-out ones (exact radius unpublished, tracked as KB open question). The bigger risk is permanent City Destruction: attackers gain +50% Influence Points, defenders lose 100%, and the city cannot be rebuilt. Altar windows open Tuesdays only, hold max 3. Faction assignment (Deepwood/Wetland) locks at start. See the (upcoming) Altar Conquest Planner sibling tool, or override to S2 above for freeze planning. (KB07 §277-360)",
+      noHeatCta_s6: 'Live S6 tools: Season Timeline → Awakening rotation W1 Kimberly / W3 D.Va / W6 Tesla · Coal Burn (S6 variant) → Hero Awakening Shard Planner. (KB07 §325-360)',
       kbGapFogBadge: 'KB gap: fog radius / duration / visibility formula not yet sourced. Speculative mentions only.',
+
+      // ---- Season 7 placeholder (unified copy — no per-tool variant work)
+      noHeatTitle_s7: 'Season 7 launches ~August 2026',
+      noHeatBody_s7: "Full tool support arrives when First Fun publishes S7's mechanics. Two YouTube signals from ~2026-07-09 and ~2026-07-13 confirm launch this August, but the actual leak was pulled within 24 hours before being indexed. No theme, hero rotation, resource list, or map layout is confirmed as of 2026-07-15. Pattern-inference from S3-S6: 2-week pre-season + 8-week main; Hero Awakening rotation W1/W3/W6 (F2P-only per permanent monetization shift); faction system likely retained. Track updates via r5tools.io.",
+      s7ComingTracker: 'Track: r5tools.io',
 
       // ---- Season 4: Blood Night controls / readout
       mapPanelTitle_s4: 'Blood Night Clock',
@@ -178,16 +187,25 @@
       appTitle_s4: '나이트 시뮬레이터',
       appTagline_s4: '시즌 4 (에버나잇 아일) 블러드 나이트 플래너. 하루 3번의 블러드 나이트 시간대(서버 시간 02:30 / 10:30 / 18:30), 시간대별 전력 소모, 등대 + 디바인 트리 바이러스 저항 완화, 주차별 블러드 나이트 단계를 표시합니다.',
 
-      // ---- per-season placeholder copy
-      noHeatTitle_s1: '시즌 1에는 온도 시스템이 없습니다',
-      noHeatBody_s1: '시즌 1 (크림슨 플레이그)는 온도 대신 바이러스 스택과 둠스데이 사이클을 사용합니다. 시각화할 냉기/열기 메커니즘이 없습니다. S1 계획은 시즌 타임라인 도구를 사용해 둠스데이 사이클과 바이러스 저항력 관문을 확인하거나, 시즌 2로 재정의해 냉동 시즌을 계획하세요.',
-      noHeatTitle_s3: '시즌 3에는 온도 시스템이 없습니다',
-      noHeatBody_s3: '시즌 3 (골든 킹덤)은 온도 대신 저주 저항력과 샌드웜 위기를 사용합니다. 가장 가까운 공간 위험은 연맹 센터 5x5 범위를 벗어난 기지의 샌드웜 텔레포트입니다 — 이는 도시 점령 플래너 (S3 모드)에서 계획하세요. 여기서 냉동 시즌을 계획하려면 S2로 재정의하세요.',
-      noHeatTitle_s5: '시즌 5에는 온도 시스템이 없습니다',
-      noHeatBody_s5: '시즌 5 (와일드 웨스트)에는 온도나 안개 위험이 없습니다. 대표적인 공간 메커니즘은 얼라이언스 세이프 타임 (R5가 설정하는 7-15시간 면역, 수/토 하루 3번의 전쟁 시간대 중 1개를 끄는 기능)입니다. S5 계획은 뱅크 원장 도구 (예정)을 사용하거나, 여기서 냉동 시즌을 계획하려면 S2로 재정의하세요.',
-      noHeatTitle_s6: '시즌 6 안개 시야: KB 누락',
-      noHeatBody_s6: '시즌 6 (섀도우 레인포레스트)에는 시야를 줄이는 환경 안개가 있으며, 인근 아군끼리 시야를 공유합니다 (뭉친 연맹이 흩어진 연맹보다 더 멀리 봅니다). 안개의 구체적인 수치는 KB 누락이며, 출처 데이터가 확보되면 안개 시야 변형이 계획되어 있습니다. 지금은 얼탈 정복 플래너 (예정)에서 계획하거나, 여기서 냉동 시즌을 계획하려면 S2로 재정의하세요.',
+      // ---- per-season placeholder copy (S1 / S3 / S5 / S6 / S7)
+      noHeatTitle_s1: '크림슨 플레이그는 온도 시스템이 없습니다',
+      noHeatBody_s1: '시즌 1의 환경 압박은 온도가 아닌 바이러스 스택 + 둠스데이 사이클입니다. 스택은 커럽터 NPC 전투와 PvP 피격 시 바이러스 저항력(VR)과 무관하게 누적 — 100 스택 도달 시 집결/순간이동/재배치 잠금. VRI(바이러스 저항 연구소, L1-L30, 최대 +10,000 VR)가 유일하게 유의미한 건물 저항 소스입니다. 렌더링할 냉/열 온도대 없음. S1 계획은 시즌 타임라인 도구로 둠스데이 사이클 + VR 그라인드 순서를 확인하거나, 냉동 위험 대시보드(S1 모드)로 멤버별 바이러스 스택을 추적하거나, 위에서 S2로 재정의해 냉동 시즌을 계획하세요. (KB05 §16.3)',
+      noHeatCta_s1: '실시간 S1 계획: 시즌 타임라인 → 둠스데이 사이클 · 냉동 위험 대시보드 → 바이러스 스택 추적. (KB05 §16.3)',
+      noHeatTitle_s3: '골든 킹덤은 온도 시스템 대신 저주 저항력을 사용합니다',
+      noHeatBody_s3: '시즌 3의 환경 위험은 모래벌레 텔레포트입니다. 대형 모래벌레(W1-W2 14일 샌드웜 크라이시스 이벤트)는 얼라이언스 센터 5×5 범위 밖의 기지를 무작위 좌표로 순간이동시킵니다. 저주 저항력이 PvE 데미지 게이트(저항 부족 시 최대 99.9% 감소, 저주 연구실 L30 상한). 온도대 없음. AC 앵커 배치는 도시 점령 플래너(S3 모드), 냉동 시즌 계획은 위에서 S2로 재정의하세요. (KB07 §34-95, §761-886)',
+      noHeatCta_s3: '실시간 S3 도구: 도시 점령 플래너(S3 모드) → AC 앵커 배치 · 시즌 타임라인 → 샌드웜 크라이시스 + 향신료 전쟁 순서. (KB07 §761-886)',
+      noHeatTitle_s5: '와일드 웨스트는 환경 위험이 없습니다',
+      noHeatBody_s5: '시즌 5는 온도·안개 대신 얼라이언스 세이프 타임 시스템을 사용합니다. R5가 설정하는 7-15시간 면역 창구가 수/토 전쟁일의 3개 전쟁 슬롯 중 하나를 꺼둡니다. 일요일은 완전 정전일(Truce Day). 은행 요새는 전쟁 창구 중에만 경쟁(전쟁일당 2회 도시 점령 = 주당 최대 4회). L10 뱅크 스트롱홀드는 W4 개방, 39,900 바이러스 저항력 필요. (예정) 세이프 타임 스케줄러 + 뱅크 원장 도구 참조, 또는 위에서 S2로 재정의하세요. (KB07 §241-253)',
+      noHeatCta_s5: '실시간 S5 도구: 시즌 타임라인 → 뱅크 스트롱홀드 L1-L10 개방 스케줄 · 석탄 소모(S5 변형) → 크리스탈골드 예치 플래너. (KB07 §226-273)',
+      noHeatTitle_s6: '섀도우 레인포레스트는 온도 시스템이 없습니다',
+      noHeatBody_s6: '시즌 6의 환경 요소는 공유 안개 시야입니다(팩션 아군 밀집 시 시야 확장, 정확한 반경은 KB 미공개). 더 큰 위험은 영구 도시 파괴: 공격자 +50% 영향력 포인트, 방어자 -100% IP, 재건 불가. 제단은 화요일만 개방, 최대 3개 보유. 팩션 배정(딥우드/웻랜드)은 시작 시점에 고정. (예정) 제단 정복 플래너 참조, 또는 위에서 S2로 재정의하세요. (KB07 §277-360)',
+      noHeatCta_s6: '실시간 S6 도구: 시즌 타임라인 → 각성 로테이션 W1 킴벌리 / W3 D.Va / W6 테슬라 · 석탄 소모(S6 변형) → 영웅 각성 조각 플래너. (KB07 §325-360)',
       kbGapFogBadge: 'KB 누락: 안개 반경 / 지속시간 / 시야 공식은 아직 확보되지 않았습니다. 추측성 언급만 존재합니다.',
+
+      // ---- Season 7 placeholder (unified copy — no per-tool variant work)
+      noHeatTitle_s7: '시즌 7 출시 예정 — 2026년 8월경',
+      noHeatBody_s7: 'S7 메커니즘이 공개되면 도구 지원이 시작됩니다. YouTube 신호 2건(2026-07-09, 2026-07-13)이 8월 출시를 확인했지만 실제 유출은 24시간 이내 삭제. 2026-07-15 기준 테마·영웅 로테이션·자원·지도 미확정. S3-S6 패턴 추정: 2주 사전 시즌 + 8주 본 시즌 · 영웅 각성 W1/W3/W6(영구 무과금) · 팩션 유지 예상. 업데이트는 r5tools.io에서 확인하세요.',
+      s7ComingTracker: '추적: r5tools.io',
 
       // ---- Season 4: Blood Night controls / readout
       mapPanelTitle_s4: '블러드 나이트 시계',

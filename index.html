@@ -52,6 +52,7 @@
               <div id="noHeatBanner" style="display:none;padding:24px;margin-bottom:12px;background:rgba(201,169,97,0.08);border:1px solid rgba(201,169,97,0.3);border-radius:8px;color:#c9a961;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5">
                 <div style="font-weight:600;margin-bottom:6px" data-i18n="noHeatTitle">Heat mechanics don't apply this season</div>
                 <div style="color:#a8b0c0;font-size:13px" data-i18n="noHeatBody">This tool visualises Season 2 (Polar Storm) thermal bands. The current warzone/season has no temperature system — switch warzone or override the season via the selector above to plan for a frozen season.</div>
+                <div id="noHeatCta" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid rgba(201,169,97,0.18);color:#c9a961;font-size:12px"></div>
               </div>
               <canvas id="heatCanvas" width="1200" height="1200" aria-label="Warzone heat map"></canvas>
               <div class="map-legend" id="mapLegend">
@@ -725,7 +726,7 @@
     if (mapPanelEl) {
       mapPanelEl.textContent = I18N._dict.en[mapPanelKey] ? I18N.t(mapPanelKey) : I18N.t('mapPanelTitle');
     }
-    // No-heat banner copy (S1/S3/S5/S6 each get sharpened copy)
+    // No-heat banner copy (S1/S3/S5/S6/S7 each get sharpened copy)
     var noHeatTitleKey = 'noHeatTitle_' + short;
     var noHeatBodyKey = 'noHeatBody_' + short;
     var noHeatTitleEl = document.querySelector('[data-i18n="noHeatTitle"]');
@@ -735,6 +736,22 @@
     }
     if (noHeatBodyEl) {
       noHeatBodyEl.textContent = I18N._dict.en[noHeatBodyKey] ? I18N.t(noHeatBodyKey) : I18N.t('noHeatBody');
+    }
+    // Optional CTA / tracker line inside the banner. S1/S3/S5/S6 each get a
+    // live-tool hint; S7 gets the r5tools.io tracker line; other seasons
+    // (S2 = has heat, S4 = variant) hide the row.
+    var noHeatCtaEl = document.getElementById('noHeatCta');
+    if (noHeatCtaEl) {
+      var ctaKey = null;
+      if (short === 's7') ctaKey = 's7ComingTracker';
+      else if (['s1', 's3', 's5', 's6'].indexOf(short) !== -1) ctaKey = 'noHeatCta_' + short;
+      if (ctaKey && I18N._dict.en[ctaKey]) {
+        noHeatCtaEl.textContent = I18N.t(ctaKey);
+        noHeatCtaEl.style.display = 'block';
+      } else {
+        noHeatCtaEl.textContent = '';
+        noHeatCtaEl.style.display = 'none';
+      }
     }
   }
 
