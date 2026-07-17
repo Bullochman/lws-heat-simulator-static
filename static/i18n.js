@@ -267,7 +267,13 @@
 
   // ---- runtime ----
 
-  let currentLang = (navigator.language || 'en').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+  let currentLang = (function () {
+    try {
+      const stored = localStorage.getItem('lws_lang');
+      if (stored === 'en' || stored === 'ko') return stored;
+    } catch (e) { /* private mode */ }
+    return (navigator.language || 'en').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+  })();
 
   function t(key, vars) {
     const dict = I18N[currentLang] || I18N.en;
@@ -302,7 +308,11 @@
   function setLang(lang) {
     currentLang = (lang === 'ko') ? 'ko' : 'en';
     apply(document);
+    // Persist to BOTH the tool-local key (legacy) and the suite-shared key so
+    // that switching language here carries over to sibling tools.
     try { localStorage.setItem('lws_heat_lang', currentLang); } catch (_) {}
+    try { localStorage.setItem('lws_lang', currentLang); } catch (_) {}
+    try { window.dispatchEvent(new CustomEvent('lws:lang-changed', { detail: { lang: currentLang } })); } catch (_) {}
     // Fire an event so app.js can re-render dynamic labels
     document.dispatchEvent(new CustomEvent('i18n:change', { detail: { lang: currentLang } }));
   }
@@ -312,10 +322,15 @@
   }
 
   function init() {
-    // Prefer saved preference over browser default
+    // Prefer the shared lws_lang preference first, then the legacy tool-local
+    // key, then browser default.
     try {
-      const saved = localStorage.getItem('lws_heat_lang');
-      if (saved === 'ko' || saved === 'en') currentLang = saved;
+      const shared = localStorage.getItem('lws_lang');
+      if (shared === 'ko' || shared === 'en') currentLang = shared;
+      else {
+        const saved = localStorage.getItem('lws_heat_lang');
+        if (saved === 'ko' || saved === 'en') currentLang = saved;
+      }
     } catch (_) {}
     apply(document);
     const toggleBtn = document.getElementById('langToggle');
