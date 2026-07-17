@@ -18,6 +18,21 @@
       // ---- header / brand
       brandSub: 'LWS Suite · Heat Simulator',
       langToggle: '한국어',
+      // ---- shared suite-nav (r5tools.io toolkit strip) ----
+      suiteNavPart: 'Part of the ',
+      suiteNavToolkit: ' Last War: Survival alliance toolkit — ',
+      navLanding: 'Landing',
+      navHeat: 'Heat',
+      navFreeze: 'Freeze',
+      navCoal: 'Coal',
+      navCity: 'City',
+      navTimeline: 'Timeline',
+      navHive: 'Hive',
+      navRoster: 'Roster',
+      navProfile: 'Profile',
+      navVsDays: 'VS Days',
+      betaFeedbackPill: '🚧 BETA · Feedback',
+
 
       // ---- app titles
       appTitle: 'Heat Simulator',
@@ -128,6 +143,21 @@
       // ---- header / brand
       brandSub: 'LWS 스위트 · 히트 시뮬레이터',
       langToggle: 'EN',
+      // ---- shared suite-nav (r5tools.io toolkit strip) ----
+      suiteNavPart: '이 도구는 ',
+      suiteNavToolkit: ' 라스트 워: 서바이벌 얼라이언스 툴킷의 일부입니다 — ',
+      navLanding: '랜딩',
+      navHeat: '히트',
+      navFreeze: '동결',
+      navCoal: '석탄',
+      navCity: '도시',
+      navTimeline: '타임라인',
+      navHive: '벌집',
+      navRoster: '명단',
+      navProfile: '프로필',
+      navVsDays: 'VS 데이',
+      betaFeedbackPill: '🚧 베타 · 피드백',
+
 
       // ---- app titles
       appTitle: '히트 시뮬레이터',
