@@ -141,7 +141,7 @@
                 <p style="font-size: 11px; color: var(--text-mute); margin: -4px 0 12px 0;" data-i18n="rosterFormatHint">Columns: name, rank, hq_level, total_power, notes, x, y — matches Hive Grid Manager</p>
 
                 <div class="row">
-                  <button class="btn btn-primary" id="exportPngBtn" data-i18n="exportPngBtn" style="flex: 1;">Export PNG</button>
+                  <button class="btn btn-primary" id="exportPngBtn" data-i18n="exportPngBtn" style="flex: 1;">Export PNG</button><span id="lws-discord-slot" style="display:inline-block;margin-left:6px"></span><span id="lws-discord-gear-slot" style="display:inline-block;margin-left:4px"></span>
                   <button class="btn btn-secondary" id="exportCsvBtn" data-i18n="exportCsvBtn" style="flex: 1;">Export CSV</button>
                 </div>
 
@@ -214,6 +214,7 @@
   </script>
 
   <script src="static/fake-server.js"></script>
+<script src="static/lws-discord.js" defer></script>
     <script src="static/i18n.js"></script>
     <script src="static/seasons-lib.js"></script>
 
@@ -1030,5 +1031,6 @@
   </script>
   <script src="https://chat.r5tools.io/widget.js" defer></script>
 
+<script>window.addEventListener("DOMContentLoaded",function(){if(window.LWSDiscord&&typeof LWSDiscord.attachToButton==="function"){setTimeout(function(){LWSDiscord.attachToButton({pngBtnId:"exportPngBtn",slotId:"lws-discord-slot",gearSlotId:"lws-discord-gear-slot",filename:"heat-map.png",contextText:"Heat Map",toolName:"Heat Simulator"});},300);}});</script>
 </body>
 </html>
