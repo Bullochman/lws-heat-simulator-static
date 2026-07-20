@@ -70,7 +70,7 @@
       "end_date_estimate": "2026-08-19",
       "status": "current",
       "mechanics_config": {
-        "ambient_bands_c": [-15, -30, -40, -50, -60, -70, -80],
+        "ambient_bands_c": [-15, -30, -45, -50, -60, -70, -80],
         "temperature_bands_c": [-15, -30, -45, -50, -60, -70, -80],
         "freeze_threshold_c": -20,
         "freeze_duration_min": 5,
@@ -116,12 +116,13 @@
         "city_heat_bonus_c_by_level": { "1": 5, "2": 16, "3": 27, "4": 38, "5": 49, "6": 60 },
         "city_rare_soil_per_hr_by_level": { "1": 350, "2": 480, "3": 620, "4": 760, "5": 880, "6": 1000 },
         "city_unlock_schedule": [
-          { "level": 1, "week": 1, "day": 3, "hour": 12 },
-          { "level": 2, "week": 1, "day": 6 },
-          { "level": 3, "week": 2, "day": 3 },
-          { "level": 4, "week": 2, "day": 6 },
-          { "level": 5, "week": 3, "day": 3 },
-          { "level": 6, "week": 3, "day": 6 }
+          { "level": 1, "week": 1, "day": 3, "hour": 12, "resistance": 3500 },
+          { "level": 2, "week": 1, "day": 6, "hour": 12, "resistance": 6000 },
+          { "level": 3, "week": 2, "day": 3, "hour": 12, "resistance": 8000 },
+          { "level": 4, "week": 2, "day": 6, "hour": 12, "resistance": 9500 },
+          { "level": 5, "week": 3, "day": 3, "hour": 12, "resistance": 10000 },
+          { "level": 6, "week": 3, "day": 6, "hour": 12, "resistance": 10500 },
+          { "level": 7, "week": 4, "day": 7, "hour": 12, "resistance": null, "note": "L7 Capitol — Nuclear Furnace mission Day 6, goal delayed 36h, effective activation Day 7 + 12h" }
         ],
         "wanderer_coal_reward_l180": 200000
       },
