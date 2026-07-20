@@ -76,14 +76,34 @@
         "freeze_duration_min": 5,
         "blizzard_drop_c": {
           "none": 0,
-          "w1_2": -15,
-          "w3": -30,
+          "w1":  0,
+          "w2":  -10,
+          "w3":  -30,
+          "w4":  -50,
+          "w5":  -70,
+          "w6":  -90,
+          "w7":  -110,
+          "w1_2": -10,
           "w4_plus": -50
         },
+        "cold_wave_min_c_by_week": {
+          "1": -20,
+          "2": -30,
+          "3": -50,
+          "4": -70,
+          "5": -90,
+          "6": -110,
+          "7": -130,
+          "8": -130
+        },
         "blizzard_schedule": [
-          { "from_week": 1, "to_week": 2, "drop_c": -15, "severity": "warning" },
-          { "from_week": 3, "to_week": 3, "drop_c": -30, "severity": "danger" },
-          { "from_week": 4, "to_week": 8, "drop_c": -50, "severity": "critical" }
+          { "from_week": 1, "to_week": 1, "min_temp_c": -20,  "drop_c":   0, "severity": "info",     "label_en": "Wk1 baseline -20°C" },
+          { "from_week": 2, "to_week": 2, "min_temp_c": -30,  "drop_c": -10, "severity": "warning",  "label_en": "Wk2 -30°C" },
+          { "from_week": 3, "to_week": 3, "min_temp_c": -50,  "drop_c": -30, "severity": "warning",  "label_en": "Wk3 -50°C" },
+          { "from_week": 4, "to_week": 4, "min_temp_c": -70,  "drop_c": -50, "severity": "danger",   "label_en": "Wk4 -70°C (RSW)" },
+          { "from_week": 5, "to_week": 5, "min_temp_c": -90,  "drop_c": -70, "severity": "danger",   "label_en": "Wk5 -90°C (Nuclear Furnace)" },
+          { "from_week": 6, "to_week": 6, "min_temp_c": -110, "drop_c": -90, "severity": "critical", "label_en": "Wk6 -110°C (Glacieradons)" },
+          { "from_week": 7, "to_week": 8, "min_temp_c": -130, "drop_c": -110,"severity": "critical", "label_en": "Wk7-8 -130°C (siege)" }
         ],
         "furnace_radius_l1_tiles": 4,
         "furnace_radius_l20_tiles": 12,

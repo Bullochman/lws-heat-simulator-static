@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="static/styles.css" />
   <script src="static/lws-countdown.js" defer></script>
   <script defer src="static/lws-track.js"></script>
+  <!-- Shared LWS chart lib (used for the cold-wave freeze-risk-over-weeks chart) -->
+  <script defer src="https://r5tools.io/line-chart.js"></script>
+  <!-- Cross-tool roster-staleness widget (top-right nudge) -->
+  <script defer src="https://roster.r5tools.io/static/roster-freshness.js"></script>
 </head>
 <body>
 <!-- suite-nav (part of R5TOOLS.IO) -->
@@ -88,13 +92,31 @@
                 <p style="font-size: 11px; color: var(--text-mute); margin: -4px 0 12px 96px;" data-i18n="furnaceHint">R4/R5 deploys on L1 territory Day 1 (KB [[06-season-2-frozen]])</p>
 
                 <div class="row" id="s2BlizzardRow">
-                  <label data-i18n="blizzardLabel">Blizzard</label>
+                  <label data-i18n="blizzardLabel">Cold-wave week</label>
                   <select id="blizzardSelect">
                     <option value="none" data-i18n="blizzardNone">None</option>
-                    <option value="w1_2" data-i18n="blizzardW12">Week 1-2 (-30 °C)</option>
-                    <option value="w3"   data-i18n="blizzardW3">Week 3 (-50 °C)</option>
-                    <option value="w4"   data-i18n="blizzardW4">Week 4+ (-70 °C, Rare Soil War)</option>
+                    <option value="w1" data-i18n="blizzardW1">Wk 1 (-20 °C baseline)</option>
+                    <option value="w2" data-i18n="blizzardW2">Wk 2 (-30 °C)</option>
+                    <option value="w3" data-i18n="blizzardW3">Wk 3 (-50 °C)</option>
+                    <option value="w4" data-i18n="blizzardW4">Wk 4 (-70 °C · Rare Soil War)</option>
+                    <option value="w5" data-i18n="blizzardW5">Wk 5 (-90 °C · Nuclear Furnace)</option>
+                    <option value="w6" data-i18n="blizzardW6">Wk 6 (-110 °C · Glacieradons)</option>
+                    <option value="w7" data-i18n="blizzardW7">Wk 7-8 (-130 °C · siege)</option>
                   </select>
+                </div>
+
+                <!-- Season-week cold-wave band strip (7-week Polar Storm curve, KB [[17-seasons-catalog]]) -->
+                <div class="row" id="s2WeekStripRow" style="display:block">
+                  <div style="width:100%">
+                    <div style="font-size:11px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">
+                      <span data-i18n="s2WeekStripLabel">Polar Storm cold-wave curve</span>
+                      <span id="s2WeekStripBadge" style="float:right;color:#c9a961;font-weight:600;font-size:10px" data-i18n="s2WeekStripBadge">7-band verified · KB</span>
+                    </div>
+                    <div id="s2WeekStrip" style="display:flex;gap:2px;width:100%;height:44px;border-radius:4px;overflow:hidden;background:#0a0e1a;border:1px solid rgba(255,255,255,0.06)"></div>
+                    <div style="font-size:10px;color:var(--text-mute);margin-top:3px;text-align:center">
+                      <span data-i18n="s2WeekStripHint">Highlighted band = current season week</span>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Season 4 (Evernight Isle) Blood Night controls — hidden unless S4 resolved -->
@@ -184,6 +206,15 @@
                   No roster loaded. Upload a CSV or paste a coord.
                 </li>
               </ul>
+            </div>
+
+            <!-- Alliance freeze-risk % across the 8-week cold-wave curve (LWSLineChart) -->
+            <div class="card" id="freezeCurveCard" style="margin-top:16px">
+              <h2 data-i18n="freezeCurveTitle">Alliance freeze-risk across the season</h2>
+              <p style="font-size:11px;color:var(--text-mute);margin:-4px 0 8px 0" data-i18n="freezeCurveHint">
+                % of loaded roster below freeze threshold (-20 °C sustained 5 min) per season week, using the verified 7-band Polar Storm cold-wave curve. Upload a roster to populate.
+              </p>
+              <div id="freezeCurveChart" style="width:100%;min-height:260px"></div>
             </div>
 
           </div>
@@ -789,14 +820,18 @@
       STATE = data;
       CONSTANTS = data._constants || null;
       populateLegend();
+      renderWeekStrip();
       renderMap();
       renderFreezeList();
+      renderFreezeCurveChart();
     } catch (e) {
       console.error('[Heat Simulator] snapshot failed', e);
     }
   }
 
   // ---- LWSSeasons wire-up ------------------------------------------------
+  let CURRENT_WEEK = null;  // 1-8, resolved from LWSSeasons context (null if unknown)
+
   async function loadSeasonConfig() {
     if (!window.LWSSeasons || typeof window.LWSSeasons.resolve !== 'function') {
       console.warn('[Heat Simulator] LWSSeasons not available — using server _constants fallback');
@@ -806,6 +841,7 @@
       const ctx = await window.LWSSeasons.resolve();
       SEASON_META = ctx.season || null;
       SEASON_CFG = (ctx.season && ctx.season.mechanics_config) || {};
+      CURRENT_WEEK = ctx.week || null;
       console.log('[Heat Simulator] loaded season', ctx.season_id, 'wk', ctx.week,
                   '(has_heat=' + seasonHasHeat() + ')');
     } catch (e) {
@@ -813,12 +849,126 @@
     }
   }
 
+  // ---- Season-week cold-wave band strip (7-band Polar Storm curve) ------
+  // KB: [[17-seasons-catalog]] — Wk1 -20 / Wk2 -30 / Wk3 -50 / Wk4 -70 /
+  //     Wk5 -90 / Wk6 -110 / Wk7 -130. Wk8 inherits Wk7 min.
+  const FALLBACK_COLD_WAVE = { '1': -20, '2': -30, '3': -50, '4': -70, '5': -90, '6': -110, '7': -130, '8': -130 };
+  function coldWaveMinC(week) {
+    var src = (SEASON_CFG && SEASON_CFG.cold_wave_min_c_by_week)
+           || (CONSTANTS && CONSTANTS.cold_wave_min_c_by_week)
+           || FALLBACK_COLD_WAVE;
+    return src[String(week)] != null ? src[String(week)] : FALLBACK_COLD_WAVE[String(week)];
+  }
+  function weekBandColor(minC) {
+    // Ramp from soft-gold (Wk1 -20) to deep-red (Wk7 -130) via CSS heat-band palette
+    if (minC >= -20)  return '#e8c07d';
+    if (minC >= -30)  return getVar('--heat-band-2') || '#7185c3';
+    if (minC >= -50)  return getVar('--heat-band-3') || '#4c62a5';
+    if (minC >= -70)  return getVar('--heat-band-4') || '#2a4585';
+    if (minC >= -90)  return getVar('--heat-band-5') || '#123061';
+    if (minC >= -110) return getVar('--heat-band-6') || '#0a1f3d';
+    return getVar('--heat-band-7') || '#06111f';
+  }
+  function renderWeekStrip() {
+    var strip = document.getElementById('s2WeekStrip');
+    var row   = document.getElementById('s2WeekStripRow');
+    if (!strip || !row) return;
+    if (!seasonHasHeat()) { row.style.display = 'none'; return; }
+    row.style.display = 'block';
+    strip.innerHTML = '';
+    var wks = [1,2,3,4,5,6,7,8];
+    wks.forEach(function (wk) {
+      var mn = coldWaveMinC(wk);
+      var isCurrent = (CURRENT_WEEK === wk);
+      var cell = document.createElement('div');
+      cell.style.cssText =
+        'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'background:' + weekBandColor(mn) + ';color:#e6e8ee;font-family:ui-monospace,Menlo,Consolas,monospace;' +
+        'font-size:10px;line-height:1.1;padding:2px;position:relative;cursor:default;' +
+        (isCurrent ? 'outline:2px solid #c9a961;outline-offset:-2px;box-shadow:inset 0 0 0 1px #0a0e1a;' : '');
+      cell.title = 'Week ' + wk + ' cold-wave min: ' + mn + '°C';
+      cell.innerHTML =
+        '<div style="font-weight:600;letter-spacing:0.03em">W' + wk + '</div>' +
+        '<div style="opacity:0.9">' + mn + '°</div>' +
+        (isCurrent ? '<div style="position:absolute;top:-1px;right:2px;font-size:9px;color:#c9a961">●</div>' : '');
+      strip.appendChild(cell);
+    });
+  }
+
+  // ---- Alliance freeze-risk-over-weeks line chart -----------------------
+  // Shows % of loaded roster below freeze threshold for each of the 8 weeks.
+  // Uses LWSLineChart (https://r5tools.io/line-chart.js). Falls back to a
+  // "no data" nudge if the chart lib or roster hasn't loaded yet.
+  function renderFreezeCurveChart() {
+    var host = document.getElementById('freezeCurveChart');
+    var card = document.getElementById('freezeCurveCard');
+    if (!host || !card) return;
+    // Hide chart entirely for seasons without heat mechanics
+    if (!seasonHasHeat()) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    if (!window.LWSLineChart || typeof window.LWSLineChart.render !== 'function') {
+      host.innerHTML = '<div style="padding:32px 12px;text-align:center;color:var(--text-mute);' +
+                       'font-family:system-ui,sans-serif;font-size:12px">Chart lib loading…</div>';
+      // Retry once the deferred script lands.
+      setTimeout(renderFreezeCurveChart, 400);
+      return;
+    }
+    var cap = parseCoord(document.getElementById('capitolCoord').value) || { x: 600, y: 600 };
+    var threshold = currentFreezeThreshold();
+    var roster = (STATE && STATE.roster) ? STATE.roster.filter(function (m) {
+      return m.x != null && m.y != null && m.x !== '' && m.y !== '';
+    }) : [];
+    // If no roster, chart shows "% of the *map* at freeze risk" — synthesizes
+    // a demo signal from a 25-point grid so R5s see the shape of the curve
+    // before uploading. Once a real roster loads, we swap to real per-member.
+    var demo = !roster.length;
+    var samplePoints;
+    if (demo) {
+      samplePoints = [];
+      for (var gx = 100; gx <= 1100; gx += 250) {
+        for (var gy = 100; gy <= 1100; gy += 250) {
+          samplePoints.push({ x: gx, y: gy });
+        }
+      }
+    } else {
+      samplePoints = roster;
+    }
+    var series = [];
+    for (var wk = 1; wk <= 8; wk++) {
+      // Effective ambient for the week = base map ambient + weekly cold-wave delta
+      // We approximate the delta as the difference between the week's min-temp
+      // and the Capitol ambient (-80°C). Members further from Capitol feel less
+      // of the delta — but the KB reports the cold wave as *warzone-wide*, so
+      // we apply the min-temp as an absolute *floor* on every cell.
+      var wkMin = coldWaveMinC(wk);
+      var frozen = 0;
+      samplePoints.forEach(function (p) {
+        var amb = ambientAt(p.x, p.y, cap);
+        var eff = Math.min(amb, wkMin);  // whole map floored at weekly cold-wave min
+        if (eff < threshold) frozen++;
+      });
+      var pct = samplePoints.length ? (frozen / samplePoints.length) * 100 : 0;
+      series.push({ x: wk, y: Math.round(pct * 10) / 10 });
+    }
+    window.LWSLineChart.render(host, {
+      series: series,
+      labelX: 'Season week',
+      labelY: '% at freeze risk',
+      title: demo
+        ? '% of a 25-cell warzone grid below freeze threshold (demo)'
+        : '% of ' + samplePoints.length + '-member roster below freeze threshold',
+      height: 240,
+    });
+  }
+
   async function refreshFromSeason() {
     await loadSeasonConfig();
     applyPerSeasonCopy();
     populateLegend();
+    renderWeekStrip();
     renderMap();
     renderFreezeList();
+    renderFreezeCurveChart();
   }
 
   // React to warzone / season override changes from the shared selector.
@@ -891,10 +1041,14 @@
 
   // ---- wiring ----
 
-  document.getElementById('capitolCoord').addEventListener('change', renderMap);
+  document.getElementById('capitolCoord').addEventListener('change', function () {
+    renderMap();
+    renderFreezeCurveChart();
+  });
   document.getElementById('furnaceCoord').addEventListener('change', renderMap);
   document.getElementById('blizzardSelect').addEventListener('change', function () {
     renderFreezeList();
+    renderFreezeCurveChart();
     // Re-run lookup with new blizzard if lookup coord is set
     const lc = parseCoord(document.getElementById('lookupCoord').value);
     if (lc) computeAt(lc.x, lc.y).then(paintReadout);
@@ -985,9 +1139,20 @@
   document.addEventListener('i18n:change', function () {
     // Re-render dynamic bits when language toggles
     applyPerSeasonCopy();
+    renderWeekStrip();
     renderFreezeList();
+    renderFreezeCurveChart();
     if (seasonIsBloodNight()) renderMap();
   });
+
+  // Debounced chart re-render on resize (SVG chart is width-driven)
+  (function () {
+    var t = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(t);
+      t = setTimeout(function () { renderFreezeCurveChart(); }, 150);
+    });
+  })();
 
   // Wire S4 controls (safe even when hidden — the handlers only render if S4 is active)
   var _s4NightSel = document.getElementById('nightPhaseSelect');
@@ -1005,11 +1170,13 @@
   (async function boot() {
     await loadSeasonConfig();
     applyPerSeasonCopy();
+    renderWeekStrip();
     await fetchSnapshot();
     // fetchSnapshot renders; but for seasons w/o thermal grid (S1/S3/S5/S6)
     // OR the S4 night simulator variant, we need to render explicitly to
     // show the correct banner / clock even without the server payload.
     if (!seasonHasHeat() || seasonIsBloodNight()) renderMap();
+    renderFreezeCurveChart();
   })();
 
   </script>
@@ -1028,6 +1195,54 @@
       dt.items.add(new File([csv], ev.detail.name + '.csv', { type: 'text/csv' }));
       input.files = dt.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  </script>
+  <!-- ==========================================================
+       Roster-freshness widget mount.
+       Shows a "your alliance roster is X hours old" nudge in the
+       top-right. Signature comes from URL hash (#alliance_sig=...)
+       or localStorage.lws_last_alliance_sig — same convention as
+       roster-picker.js. Language mirrors the current i18n locale.
+       ========================================================== -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      function pickSignature() {
+        try {
+          var h = (window.location.hash || '').replace(/^#/, '');
+          if (h.indexOf('alliance_sig=') !== -1) {
+            var params = {};
+            h.split('&').forEach(function (kv) {
+              var i = kv.indexOf('='); if (i < 0) return;
+              params[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1));
+            });
+            if (params.alliance_sig && /^[a-f0-9]{4,32}$/.test(params.alliance_sig)) {
+              try { localStorage.setItem('lws_last_alliance_sig', params.alliance_sig); } catch (e) {}
+              return params.alliance_sig;
+            }
+          }
+          return localStorage.getItem('lws_last_alliance_sig');
+        } catch (e) { return null; }
+      }
+      function pickLang() {
+        try {
+          if (window.I18N && I18N.getLang) return I18N.getLang() === 'kr' ? 'ko' : 'en';
+        } catch (e) {}
+        return (navigator.language || 'en').slice(0, 2) === 'ko' ? 'ko' : 'en';
+      }
+      function mount() {
+        if (!window.RosterFreshness || typeof RosterFreshness.mount !== 'function') {
+          setTimeout(mount, 400);
+          return;
+        }
+        var sig = pickSignature();
+        RosterFreshness.mount({
+          signature: sig,                                // null → widget shows "no roster" nudge
+          apiBase: 'https://roster.r5tools.io',
+          lang: pickLang(),
+          onRefresh: function () { window.open('https://roster.r5tools.io/', '_blank'); },
+        });
+      }
+      mount();
     });
   </script>
   <script src="https://chat.r5tools.io/widget.js" defer></script>
